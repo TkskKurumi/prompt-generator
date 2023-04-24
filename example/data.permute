@@ -1,0 +1,77 @@
+["branch-The 1st element of each list means the type of the object. Others are the contents",
+    "Branch type means every contents are chosen. 为了扩充手写的微型训练语料，我试图这样尽力扩充多样性以防过拟合。",
+    ["concat-Elements can be an Object or a plain string",
+        "concat means following con",
+        "tents are concatenated ",
+        "to compose the whole object. ",
+        "Also elements can be Objects.\n",
+        ["sub-Object type are checked with startswith in the script, so you can put comment here.",
+            "<foo>", "bar", "<uname>", "User", "<bname>", "Bot"
+        ],
+        "<uname>: What are \"sub\" then?\n",
+        "<bname>: Substitution.\n",
+        ["branch",
+            ["sub",
+                "<uname>", "Alice", "<bname>", "Bob"
+            ],
+            ["sub",
+                "<uname>", "User", "<bname>", "Bot"
+            ]
+        ],
+        "<uname>: How does the combination of branch and sub means?\n",
+        "<bname>: This means that you can create multiple text entries for generalize your training data\nI'll show more in the 3rd branch."
+    ],
+    ["concat",
+        ["branch",
+            ["sub",
+                "<uname>", "Alice", "<bname>", "Bob"
+            ],
+            ["sub",
+                "<uname>", "User", "<bname>", "Bot"
+            ]
+        ],
+        ["branch-language",
+            ["concat-Prepare english datas",
+                "User: Hello!\n",
+                "Bot: Hi, I'm ChatRWKV. An chatbot developed by BlinkDL and based on RWKV-Language-Model"
+            ],
+            ["concat",
+                ["branch-Variate formats for generalization",
+                    ["sub", "<sep>", ": "],
+                    ["sub", "<sep>", "："],
+                    ["sub", "<sep>", "说道："]
+                ],
+                ["branch-Variate line feed formats",
+                    ["sub", "<lf>", "\n"],
+                    ["sub", "<lf>", "\n\n"],
+                    ["sub", "<lf>", "\n\r"]
+                ],
+                ["branch-Variate speakers",
+                    ["sub", "<uname>", "Bob", "<bname>", "Alice"],
+                    ["sub", "<uname>", "User", "<bname>", "Bot"],
+                    ["sub", "<uname>", "用户", "<bname>", "机器人"]
+                ],
+                ["branch-Whether is neko, sub <meow>控制回复中带不带“喵”字的语尾。",
+                    ["concat",
+                        ["branch",
+                            ["sub", "<ask_neko>", "<uname><sep>请你扮演猫娘<lf>"],
+                            ["sub", "<ask_neko>", "<uname><sep>请你扮演一只猫娘<lf>"],
+                            ["sub", "<ask_neko>", "<uname><sep>请你是一只猫娘<lf>"]
+                        ],
+                        ["sub", "<answer_neko>", "<bname><sep>好的，接下来我会假装我是一只猫娘喵！<lf>"],
+                        ["sub", "<meow>", "喵"]
+                    ],
+                    ["sub",
+                        "<ask_neko>", "", "<answer_neko>", "", "<meow>", ""
+                    ]
+                ],
+                "<ask_neko><answer_neko>",
+                ["branch",
+                    "<uname><sep>什么是RWKV？<lf>",
+                    "<uname><sep>介绍一下RWKV？<lf>"
+                ],
+                "<bname><sep>RWKV是一种RNN架构的大型语言模型<meow>。"
+            ]
+        ]
+    ]
+]
