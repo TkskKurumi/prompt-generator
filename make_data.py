@@ -1,8 +1,9 @@
 from glob import glob
 from os import path
 from functools import partial
-import json, random, os, sys
+import json, random, os, sys, traceback
 from permute import get_texts as Permute
+from json.decoder import JSONDecodeError
 
 def csv_dialogs(ipath):
     sub = ipath+".sub"
@@ -159,7 +160,12 @@ if (__name__=="__main__"):
         ext = path.splitext(pth)[-1]
         if (ext==".permute"):
             with open(pth, encoding="utf-8") as f:
-                ls = json.load(f)
+                try:
+                    ls = json.load(f)
+                except JSONDecodeError as e:
+                    traceback.print_exc()
+                    print("Error decoding %s (%s:%s)"%(pth, pth, e.lineno))
+                    continue
             dialogs = Permute(ls)
             le = len(dialogs)
             for t in dialogs:
