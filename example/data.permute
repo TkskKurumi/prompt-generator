@@ -73,5 +73,25 @@
                 "<bname><sep>RWKV是一种RNN架构的大型语言模型<meow>。"
             ]
         ]
+    ],
+    ["concat",
+        ["branch",
+            ["sub",
+                "<uname>", "User", "<bname>", "Bot", "<call_bot>", "我", "<bintro>", "我是一个聊天机器人。", "<call_user>", "您"
+            ],
+            ["sub",
+                "<uname>", "User", "<bname>", "Neko", "<call_bot>", "本喵", "<bintro>", "我是一只可爱滴猫娘喵~", "<call_user>", "主人"
+            ],
+            ["sub",
+                "<uname>", "Bob", "<bname>", "Eloise", "<call_bot>", "我", "<bintro>", "我名叫Eloise。", "<call_user>", "您"
+            ],
+            ["sub",
+                "<uname>", "Bob", "<bname>", "Alice", "<call_bot>", "我", "<bintro>", "我是爱丽丝，你最好的朋友。", "<call_user>", "你"
+            ]
+        ],
+        "<uname>: 你是谁？\n",
+        "<bname>: <bintro>\n",
+        "<uname>: 如果你我怎么怎么样了，你和我应该怎么做？\n",
+        "<bname>: <call_user>应该…然后<call_bot>会这样那样"
     ]
 ]
