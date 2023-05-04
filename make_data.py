@@ -91,7 +91,43 @@ def json_dialogs(ipath):
         ret.extend(foo(i))
     return ret
 
+_default_users = ["branch",
+    ["sub", "<user>", "User", "<bot>", "Bot"],
+    ["sub", "<user>", "Bob", "<bot>", "Alice"]
+]
+_default_lf = ["branch",
+    ["sub", "<lf>", "\n"],
+    ["sub", "<lf>", "\n\n"]
+]
+_default_sep = ["branch",
+    ["sub", "<sep>", ": "],
+    ["sub", "<sep>", "\uff1a"]
+]
 
+def ijson(pth):
+    ret = []
+    with open(pth, "r") as f:
+        while(len(ret)<4096):
+            try:
+                ln = f.readline()
+            except EOFError:
+                break
+            ln = ln.strip("\n\r")
+            j = json.loads(ln)
+            Q = j["instruction"]+j.get("input", "")
+            A = j["output"]
+            ls = ["concat",
+                _default_users,
+                _default_lf,
+                _default_sep,
+                "<user><sep>", Q, "<lf>",
+                "<bot><sep>", A, "<lf>",
+                "<user><sep>"
+            ]
+            dialogs = Permute(ls)
+            ret.extend(dialogs)
+    return ret
+            
 
 def txt_dialogs(ipath):
     with open(ipath) as f:
@@ -159,14 +195,20 @@ if (__name__=="__main__"):
         pth = path.join(args.input_dir, i)
         ext = path.splitext(pth)[-1]
         if (ext==".permute"):
-            with open(pth, encoding="utf-8") as f:
+            with open(pth, encoding="utf-8") as infile:
                 try:
-                    ls = json.load(f)
+                    ls = json.load(infile)
                 except JSONDecodeError as e:
                     traceback.print_exc()
                     print("Error decoding %s (%s:%s)"%(pth, pth, e.lineno))
                     continue
-            dialogs = Permute(ls)
+            try:
+                dialogs = Permute(ls)
+            except Exception as e:
+                traceback.print_exc()
+                print("Error permuting %s, %s"%(pth, e))
+                continue
+            dialogs = [i for i in dialogs if i] # maybe empty
             le = len(dialogs)
             for t in dialogs:
                 prt(json.dumps({"text": t}, ensure_ascii=False))
@@ -175,6 +217,11 @@ if (__name__=="__main__"):
                 lines = infile.readlines()
             le = len(lines)
             f.write("".join(lines))
+        elif(ext==".ijson"):
+            dialogs = ijson(pth)
+            le = len(dialogs)
+            for t in dialogs:
+                prt(json.dumps({"text": t}, ensure_ascii=False))
         else:
             print("Unrecognized", pth)
             continue

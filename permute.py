@@ -1,18 +1,42 @@
 from __future__ import annotations
 from functools import partial
 from typing import List
+from types import NoneType
 import random
 from math import ceil
+
+
+class Status:
+    def __init__(self, texts=None, sub=None):
+        self.texts = [] if texts is None else texts
+        self.sub = {} if sub is None else sub
+    def copy(self):
+        return Status(list(self.texts), dict(self.sub))
+
 class Node:
-    def __init__(self, func=None, name="unknown"):
+    def __init__(self, name="unknown", apply=None, revert=None):
         self.to = []
-        self.func = func
         self.name = name
+        self.f_apply = apply
+        self.f_revert = revert
     def connect(self, other: Node):
         self.to.append(other)
         return other
     def __repr__(self):
         return "<Node name=%s>"%(self.name)
+    def apply(self, S):
+        if(callable(self.f_apply)):
+            self.f_apply(self, S)
+        else:
+            pass
+    def revert(self, S):
+        if(callable(self.f_revert)):
+            self.f_revert(self, S)
+        else:
+            pass
+
+
+
 class Block:
     def __init__(self):
         self.head = Node()
@@ -42,18 +66,53 @@ class Single(Block):
         super().__init__()
         self.head.connect(content).connect(self.tail)
 
-class Status:
-    def __init__(self, texts=None, sub=None):
-        self.texts = [] if texts is None else texts
-        self.sub = {} if sub is None else sub
-    # def copy(self):
-    #     return Status(list(self.texts), dict(self.sub))
-def _add_text(text, S):
-    S.texts.append(text)
+def _add_text(text):
+    def apply(node: Node, S: Status):
+        S.texts.append(text)
+    def revert(node: Node, S: Status):
+        S.texts.pop()
+    return apply, revert
 def _set_sub(*args):
-    S = args[-1]
-    for i in range(1, len(args)-1, 2):
-        S.sub[args[i-1]] = args[i]
+    d_apply = {}
+    d_revert = {}
+    for i in range(1, len(args), 2):
+        d_apply[args[i-1]] = args[i]    
+    def apply(node: Node, S: Status):
+        for k, v in d_apply.items():
+            if(k in S.sub):
+                d_revert[k] = S.sub[k]
+            S.sub[k] = v
+    def revert(node: Node, S: Status):
+        for k, v in d_apply.items():
+            if(k in d_revert):
+                S.sub[k] = d_revert[k]
+            else:
+                S.sub.pop(k)
+    return apply, revert
+def _has_tag(tag, to0, to1):
+    def apply(node: Node, S: Status):
+        if(tag in S.sub):
+            node.to = to1
+        else:
+            node.to = to0
+    def revert(node: Node, S: Status):
+        node.to = None
+    return apply, revert
+class IF(Block):
+    def __init__(self, tag, then: Block, _else: Block|NoneType=None):
+        self.tail = Node()
+        if(_else is not None):
+            _else.tail.connect(self.tail)
+            to0 = [_else.head]
+        else:
+            to0 = [self.tail]
+        
+        then.tail.connect(self.tail)
+        to1 = [then.head]
+        app, rev = _has_tag(tag, to0, to1)
+
+        self.head = Node(apply = app, revert=rev)
+        
 
 def Build(ls, route=None) -> Block:
     if(route is None):
@@ -62,8 +121,9 @@ def Build(ls, route=None) -> Block:
     if(isinstance(ls, list)):
         typ = ls[0]
         if(typ.startswith("sub")):
-            f = partial(_set_sub, *ls[1:])
-            node = Node(func=f, name="sub_"+nm)
+            apply, revert = _set_sub(*ls[1:])
+            node = Node(name="sub_"+nm, apply=apply, revert=revert)
+
             ret = Single(node)
             ret.head.name = node.name+"_pre"
             ret.tail.name = node.name+"_post"
@@ -88,11 +148,21 @@ def Build(ls, route=None) -> Block:
             ret.head.name = "concat_"+nm+"_h"
             ret.tail.name = "concat_"+nm+"_t"
             return ret
+        elif(typ.startswith("if")):
+            tag = ls[1]
+            then = Build(ls[2])
+            if(len(ls)>3):
+                _else = Build(ls[3])
+            else:
+                _else = None
+            ret = IF(tag, then, _else)
+            return ret
+            
         else:
             raise TypeError(typ)
     elif(isinstance(ls, str)):
-        f = partial(_add_text, ls)
-        node = Node(name="text_"+nm, func=f)
+        apply, revert = _add_text(ls)
+        node = Node(name="text_"+nm, apply=apply, revert=revert)
         ret = Single(node)
         ret.head.name = nm+"_pre"
         ret.tail.name = nm+"_post"
@@ -110,32 +180,37 @@ def get_texts(ls, mx=2048):
     end = top.tail
     stack = []
     ret = []
+    S = Status()
     def out():
-        nonlocal stack, ret
-        S = Status()
-        for i in stack:
-            if(i.func is not None):
-                i.func(S)
+        nonlocal stack, ret, S
         texts = []
         for t in S.texts:
+            cnt = 0
             while(True):
                 stop = True
                 for k, v in S.sub.items():
                     if(k in t):
-                        t = t.replace(k, v)
-                        stop = False
+                        newt = t.replace(k, v)
+                        if(newt!=t):
+                            stop = False
+                        t = newt
+                        cnt += 1
+                if(cnt>4096):
+                    print(t, S.sub)
+                    raise RecursionError("Potential circular substitution")
                 if(stop):
                     break
             texts.append(t)
         # print(stack, texts)
         ret.append("".join(texts))
     def recur(u: Node, max_branch):
-        nonlocal stack, end
+        nonlocal stack, end, S
         if(u is end):
             out()
         for v in stack:
             assert v is not u, "%s %s"%(stack, u)
         stack.append(u)
+        u.apply(S)
         to = u.to
         if(len(to)>max_branch):
             to = random.sample(to, max(1, ceil(max_branch)))
@@ -143,9 +218,27 @@ def get_texts(ls, mx=2048):
             recur(v, max_branch/len(to))
             # if(len(ret)>mx):break
         stack.pop()
+        u.revert(S)
     recur(top.head, mx)
     return ret
 
 
     
-    
+if(__name__=="__main__"):
+    ls = ["concat",
+        "first:\n",
+        ["branch",
+            "branch-A",
+            "branch-B",
+            ["sub",
+                "<branch-C>", "in branch-C"
+            ]
+        ],
+        "<branch-C>",
+        ["if", "<branch-C>",
+            ["concat",
+                "\nmeow"
+            ]
+        ]
+    ]
+    print(get_texts(ls))
