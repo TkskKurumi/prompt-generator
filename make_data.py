@@ -188,9 +188,13 @@ if (__name__=="__main__"):
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_dir", type=str)
     parser.add_argument("-O", "--output", type=str)
+    parser.add_argument("--max_per_file", type=int, help="max number of entries per file.", default=4096)
     args = parser.parse_args()
     f = open(args.output, "w", encoding="utf-8")
     prt = partial(print, file=f)
+
+    max_per_file = args.max_per_file
+
     for i in os.listdir(args.input_dir):
         pth = path.join(args.input_dir, i)
         ext = path.splitext(pth)[-1]
@@ -203,7 +207,7 @@ if (__name__=="__main__"):
                     print("Error decoding %s (%s:%s)"%(pth, pth, e.lineno))
                     continue
             try:
-                dialogs = Permute(ls)
+                dialogs = Permute(ls, mx=max_per_file)
             except Exception as e:
                 traceback.print_exc()
                 print("Error permuting %s, %s"%(pth, e))
@@ -214,11 +218,11 @@ if (__name__=="__main__"):
                 prt(json.dumps({"text": t}, ensure_ascii=False))
         elif (ext==".jsonl"):
             with open(pth) as infile:
-                lines = infile.readlines()
+                lines = infile.readlines()[:max_per_file]
             le = len(lines)
             f.write("".join(lines))
         elif(ext==".ijson"):
-            dialogs = ijson(pth)
+            dialogs = ijson(pth)[:max_per_file]
             le = len(dialogs)
             for t in dialogs:
                 prt(json.dumps({"text": t}, ensure_ascii=False))

@@ -220,6 +220,10 @@ def get_texts(ls, mx=2048):
         stack.pop()
         u.revert(S)
     recur(top.head, mx)
+    if(len(ret)>mx):
+        ret = random.sample(ret, mx)
+    else:
+        random.shuffle(ret)
     return ret
 
 
